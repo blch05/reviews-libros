@@ -162,7 +162,7 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
                         {avgStars !== null ? (
                           <>
                             <StarDisplay stars={avgStars} />
-                            <span className="text-gray-600 font-semibold text-sm">({avgStars.toFixed(1)}/5.0)</span>
+                            <span className="text-gray-600 font-serif font-semibold text-sm">({avgStars.toFixed(1)}/5.0)</span>
                             <span className="text-xs text-gray-500">({reviews.length} reseña{reviews.length !== 1 ? 's' : ''})</span>
                           </>
                         ) : (
@@ -243,7 +243,7 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
                     <span className="font-semibold font-serif text-black text-sm">Calificá este libro:</span>
                     <StarSelector stars={stars} setStars={setStars} hoverStars={hoverStars} setHoverStars={setHoverStars} />
                   </div>
-                  <button type="submit" className="p-3 bg-black text-white font-serif rounded-md font-semibold hover:bg-blue-700 transition text-sm">
+                  <button type="submit" className="p-3 bg-black text-white font-serif rounded-md font-semibold hover:bg-white hover:text-black transition text-sm">
                     Agregar reseña
                   </button>
                 </form>

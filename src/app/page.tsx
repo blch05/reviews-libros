@@ -10,7 +10,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-blue-600 text-lg">Cargando libros más reseñados...</p>
+        <p className="text-black text-lg">Cargando libros más reseñados...</p>
       </div>
     );
   }
