@@ -40,7 +40,7 @@ const StarRating: React.FC<StarRatingProps> = ({
         ))}
       </div>
       {showValue && (
-        <span className={`${starSize} font-semibold text-gray-700`}>
+        <span className={`${starSize} font-semibold font-serif text-white`}>
           {rating.toFixed(1)}/{maxStars}.0
         </span>
       )}

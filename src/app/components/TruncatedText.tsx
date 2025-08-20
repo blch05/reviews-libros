@@ -42,7 +42,7 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
       {expandable && shouldTruncate && (
         <button
           onClick={handleToggle}
-          className="text-blue-600 hover:text-blue-800 underline ml-1 text-sm"
+          className="text-white hover:text-gray-400 underline ml-1 text-sm"
         >
           {isExpanded ? collapseText : expandText}
         </button>
