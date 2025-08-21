@@ -24,7 +24,7 @@ export function BookCard({ book, onSelect }: { book: any, onSelect: (id: string)
         {info.description && (
           <TruncatedText text={info.description} maxLength={150} className="mb-1 text-gray-700 text-sm leading-relaxed" />
         )}
-        {info.categories && <p className="mb-1"><span className="font-sans text-sm text-gray-800 font-semibold">Categorías:</span> {info.categories.join(", ")}</p>}
+        {info.categories && <p className="mb-1"><span className="font-sans text-sm text-gray-800 font-semibold">Categorias:</span> {info.categories.join(", ")}</p>}
       </div>
     </div>
   );
