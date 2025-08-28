@@ -27,7 +27,7 @@ export function BookCarousel({ topBooks }: CarouselProps) {
 
   return (
     <>
-      {/* Carrusel de libros, aparecen solo los que tienen reviews*/}
+      {/* Carrusel de libros -> aparecen solo los que tienen reviews*/}
       <div className="fixed left-0 bg-[#251711] py-8 mt-16 flex items-center justify-center relative" style={{ marginLeft: 0 }}>
         <CarouselButton 
           direction="prev"

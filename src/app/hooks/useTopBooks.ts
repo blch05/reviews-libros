@@ -11,7 +11,6 @@ export function useTopBooks() {
   useEffect(() => {
     async function loadTopBooks() {
       try {
-        setLoading(true);
         const topBookIds = getTopReviewedBooks(10);
         
         if (topBookIds.length === 0) {
@@ -19,7 +18,7 @@ export function useTopBooks() {
           return;
         }
 
-        // Buscar datos de los libros, usando localStorage como cache
+        // Buscar datos de los libros -> Usa localstorage
         const booksData = await Promise.all(
           topBookIds.map(async (id) => {
             const cached = getCachedBook(id);

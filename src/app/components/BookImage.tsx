@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 interface BookImageProps {
   src: string;
@@ -19,6 +20,7 @@ const BookImage: React.FC<BookImageProps> = ({ src, alt, size = "md", className 
 
   if (!src) return null;
 
+  // Usar img regular para imágenes externas que pueden tener problemas con Next.js Image
   return (
     <img 
       src={src} 

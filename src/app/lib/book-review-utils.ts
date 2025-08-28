@@ -9,7 +9,7 @@ export interface Review {
 }
 
 export class BookReviewUtils {
-  /**
+  /*
    * Obtiene las reseñas de un libro desde localStorage
    */
   static getBookReviews(bookId: string): Review[] {
@@ -22,7 +22,7 @@ export class BookReviewUtils {
     }
   }
 
-  /**
+  /*
    * Calcula el promedio de estrellas de un libro
    */
   static getAverageStars(bookId: string): number {
@@ -32,7 +32,7 @@ export class BookReviewUtils {
     return sum / reviews.length;
   }
 
-  /**
+  /*
    * Obtiene la mejor y peor reseña de un libro
    */
   static getBestAndWorstReviews(bookId: string) {
@@ -46,19 +46,26 @@ export class BookReviewUtils {
     return { best, worst };
   }
 
-  /**
+  /*
    * Obtiene la URL de la portada del libro con fallbacks
    */
   static getBookCoverUrl(book: any): string {
     const imageLinks = book.volumeInfo?.imageLinks;
-    return imageLinks?.extraLarge || 
-           imageLinks?.large || 
-           imageLinks?.medium || 
-           imageLinks?.thumbnail || 
-           "";
+    
+    if (!imageLinks) return "";
+    
+    // Priorizar imágenes de mayor calidad y convertir a HTTPS
+    const imageUrl = imageLinks.extraLarge || 
+                     imageLinks.large || 
+                     imageLinks.medium || 
+                     imageLinks.thumbnail || 
+                     "";
+    
+    // Convertir HTTP a HTTPS para evitar problemas de mixed content
+    return imageUrl.replace('http://', 'https://');
   }
 
-  /**
+  /*
    * Crea información consolidada de publicación
    */
   static getPublicationInfo(volumeInfo: any): string {
