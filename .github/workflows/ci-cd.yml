@@ -32,7 +32,7 @@ jobs:
       run: |
         pwd
         ls -la
-        ls -la vitest.config.js || echo "vitest.config.js not found"
+        ls -la vitest.config.mjs || ls -la vitest.config.js || echo "No vitest config found"
 
     - name: Run linting
       run: npm run lint
