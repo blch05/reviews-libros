@@ -1,0 +1,108 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, Christian-Barreto ]
+  pull_request:
+    branches: [ main, Christian-Barreto ]
+
+jobs:
+  # Job para correr tests primero
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run tests
+      run: npm test
+
+  # Job para build (depende de que los tests pasen)
+  build:
+    name: Build Application
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build application
+      run: npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-build
+        path: |
+          .next/
+          public/
+        retention-days: 7
+
+  # Job para deployment (solo en push a main)
+  deploy-preview:
+    name: Deploy Preview
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Vercel Preview
+      run: |
+        echo "🚀 Deploying to Vercel preview environment"
+        echo "Preview URL will be available in PR comments"
+
+  deploy-production:
+    name: Deploy Production
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Christian-Barreto'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Deploy to Production
+      run: |
+        echo "🚀 Deploying to production environment"
+        echo "Production deployment triggered"
+
+  # Job para notificaciones
+  notify:
+    name: Notify Results
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Notification
+      run: |
+        echo "Pipeline completed!"
+        echo "Tests: ${{ needs.test.result }}"
+        echo "Build: ${{ needs.build.result }}"

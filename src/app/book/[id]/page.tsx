@@ -81,6 +81,14 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
   const info = book.volumeInfo;
   const portada = info.imageLinks?.extraLarge || info.imageLinks?.large || info.imageLinks?.medium || info.imageLinks?.thumbnail || "";
 
+  // Procesar categorías para eliminar duplicados
+  const uniqueCategories = info.categories ? 
+    [...new Set(
+      info.categories
+        .flatMap((cat: string) => cat.split('/').map(c => c.trim()))
+        .filter((cat: string) => cat.length > 0)
+    )] : [];
+
   // Calculos para el promedio y reviews destacadas
   const avgStars = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.stars, 0) / reviews.length) : null;
   const maxReview = reviews.length > 0 ? reviews.reduce((max, r) => r.stars > max.stars ? r : max, reviews[0]) : null;
@@ -149,10 +157,10 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
                       </div>
                     )}
                     
-                    {info.categories && (
+                    {uniqueCategories.length > 0 && (
                       <div>
                         <span className="font-bold text-gray-700 text-sm">Categorías:</span>
-                        <span className="ml-2 text-gray-900 text-sm">{info.categories.join(", ")}</span>
+                        <span className="ml-2 text-gray-900 text-sm">{uniqueCategories.join(", ")}</span>
                       </div>
                     )}
                     
