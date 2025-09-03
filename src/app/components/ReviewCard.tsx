@@ -39,7 +39,7 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, type = "default", class
           color="text-black"
         />
       </div>
-      <p className="text-gray-700 text-sm italic">"{review.text}"</p>
+      <p className="text-gray-700 text-sm italic">&ldquo;{review.text}&rdquo;</p>
     </div>
   );
 };

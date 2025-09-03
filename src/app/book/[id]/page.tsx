@@ -208,7 +208,7 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
                           <span className="text-[#616f55] font-bold">Mejor Reseña</span>
                           <StarDisplay stars={maxReview.stars} />
                         </div>
-                        <p className="text-gray-700 italic text-sm leading-relaxed">"{maxReview.text}"</p>
+                        <p className="text-gray-700 italic text-sm leading-relaxed">&ldquo;{maxReview.text}&rdquo;</p>
                         {maxReview.votes !== 0 && (
                           <p className="text-xs text-gray-500 mt-2">{maxReview.votes} votos</p>
                         )}
@@ -221,7 +221,7 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
                           <span className="text-[#251711] font-bold">Reseña Más Crítica</span>
                           <StarDisplay stars={minReview.stars} />
                         </div>
-                        <p className="text-gray-700 italic text-sm leading-relaxed">"{minReview.text}"</p>
+                        <p className="text-gray-700 italic text-sm leading-relaxed">&ldquo;{minReview.text}&rdquo;</p>
                         {minReview.votes !== 0 && (
                           <p className="text-xs text-gray-500 mt-2">{minReview.votes} votos</p>
                         )}
