@@ -7,10 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest --config vitest.config.js",
+    "test:ui": "vitest --ui --config vitest.config.js",
+    "test:run": "vitest run --config vitest.config.js",
+    "test:coverage": "vitest run --coverage --config vitest.config.js"
   },
   "dependencies": {
     "next": "15.4.6",
