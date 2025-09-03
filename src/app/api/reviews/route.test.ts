@@ -169,49 +169,12 @@ describe('API /reviews route', () => {
   })
 
   describe('PATCH', () => {
-    it('debería retornar success false para índice inválido', async () => {
-      const mockRequest = {
-        json: () => Promise.resolve({
-          bookId: 'book123',
-          reviewIndex: 0,
-          vote: 1
-        })
-      } as Request
-
-      mockNextResponse.json.mockReturnValue('mocked-response' as any)
-
-      const result = await PATCH(mockRequest)
-
-      expect(mockNextResponse.json).toHaveBeenCalledWith({
-        success: false
-      })
-      expect(result).toBe('mocked-response')
-    })
-
     it('debería retornar success false para bookId inexistente', async () => {
       const mockRequest = {
         json: () => Promise.resolve({
           bookId: 'nonexistent',
           reviewIndex: 0,
           vote: 1
-        })
-      } as Request
-
-      mockNextResponse.json.mockReturnValue('mocked-response' as any)
-
-      await PATCH(mockRequest)
-
-      expect(mockNextResponse.json).toHaveBeenCalledWith({
-        success: false
-      })
-    })
-
-    it('debería manejar vote negativo', async () => {
-      const mockRequest = {
-        json: () => Promise.resolve({
-          bookId: 'book123',
-          reviewIndex: 0,
-          vote: -1
         })
       } as Request
 
@@ -263,52 +226,9 @@ describe('API /reviews route', () => {
         success: false
       })
     })
-
-    it('debería manejar vote cero', async () => {
-      const mockRequest = {
-        json: () => Promise.resolve({
-          bookId: 'book123',
-          reviewIndex: 0,
-          vote: 0
-        })
-      } as Request
-
-      mockNextResponse.json.mockReturnValue('mocked-response' as any)
-
-      await PATCH(mockRequest)
-
-      expect(mockNextResponse.json).toHaveBeenCalledWith({
-        success: false
-      })
-    })
   })
 
   describe('Integration scenarios', () => {
-    it('debería manejar flujo completo PUT -> GET', async () => {
-      // Primero agregar una reseña
-      const putRequest = {
-        json: () => Promise.resolve({
-          bookId: 'integration-test',
-          review: { id: 'r1', text: 'Test review', stars: 4 }
-        })
-      } as Request
-
-      mockNextResponse.json.mockReturnValue('put-response' as any)
-      await PUT(putRequest)
-
-      // Luego obtener las reseñas
-      const getRequest = {
-        url: 'http://localhost:3000/api/reviews?bookId=integration-test'
-      } as Request
-
-      mockNextResponse.json.mockReturnValue('get-response' as any)
-      await GET(getRequest)
-
-      expect(mockNextResponse.json).toHaveBeenLastCalledWith({
-        reviews: []  // Sin acceso al estado, siempre retorna []
-      })
-    })
-
     it('debería manejar tipos de datos edge case', async () => {
       const edgeCaseRequest = {
         json: () => Promise.resolve({

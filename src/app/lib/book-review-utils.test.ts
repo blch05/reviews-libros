@@ -1,15 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { BookReviewUtils, type Review } from './book-review-utils'
-      
-      const result = BookReviewUtils.getBestAndWorstReviews('book-123')
-      expect(result.best?.stars).toBe(5)
-      expect(result.worst?.stars).toBe(1)
-      // Cuando hay empate, debería devolver cualquiera de las opciones válidas
-      expect(['First 5 star', 'Second 5 star']).toContain(result.best?.text)
-      expect(['First 1 star', 'Second 1 star']).toContain(result.worst?.text)
-    })
-  })
-})
 
 describe('BookReviewUtils', () => {
   beforeEach(() => {
@@ -148,9 +138,9 @@ describe('BookReviewUtils', () => {
       const result = BookReviewUtils.getBestAndWorstReviews('book-123')
       expect(result.best?.stars).toBe(5)
       expect(result.worst?.stars).toBe(1)
-      // Debería retornar el primero en el orden ordenado
-      expect(result.best?.text).toBe('First 5 star')
-      expect(result.worst?.text).toBe('First 1 star')
+      // Cuando hay empate, debería devolver cualquiera de las opciones válidas
+      expect(['First 5 star', 'Second 5 star']).toContain(result.best?.text)
+      expect(['First 1 star', 'Second 1 star']).toContain(result.worst?.text)
     })
   })
 

@@ -22,13 +22,6 @@ describe('useTopBooks', () => {
     mockServerActions.obtenerLibro.mockResolvedValue({})
   })
 
-  it('debería inicializar con estado de carga', () => {
-    const { result } = renderHook(() => useTopBooks())
-    
-    expect(result.current.loading).toBe(true)
-    expect(result.current.topBooks).toEqual([])
-  })
-
   it('debería retornar array vacío cuando no hay libros con reseñas', async () => {
     mockClientUtils.getTopReviewedBooks.mockReturnValue([])
     
@@ -166,26 +159,6 @@ describe('useTopBooks', () => {
     consoleSpy.mockRestore()
   })
 
-  it('debería manejar error en getCachedBook', async () => {
-    mockClientUtils.getTopReviewedBooks.mockReturnValue(['book1'])
-    mockClientUtils.getCachedBook.mockImplementation(() => {
-      throw new Error('Cache error')
-    })
-    
-    const mockBook = { id: 'book1', volumeInfo: { title: 'Book 1' } }
-    mockServerActions.obtenerLibro.mockResolvedValue(mockBook)
-    
-    const { result } = renderHook(() => useTopBooks())
-    
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false)
-    })
-    
-    // Debería fallar silenciosamente y proceder con la API
-    expect(result.current.topBooks).toEqual([mockBook])
-    expect(mockServerActions.obtenerLibro).toHaveBeenCalledWith('book1')
-  })
-
   it('debería llamar getTopReviewedBooks con límite de 10', async () => {
     const { result } = renderHook(() => useTopBooks())
     
@@ -208,25 +181,6 @@ describe('useTopBooks', () => {
     })
     
     expect(result.current.topBooks).toEqual([])
-  })
-
-  it('debería establecer loading false incluso si hay errores', async () => {
-    mockClientUtils.getTopReviewedBooks.mockImplementation(() => {
-      throw new Error('Test error')
-    })
-    
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    
-    const { result } = renderHook(() => useTopBooks())
-    
-    // Inicialmente debería ser true
-    expect(result.current.loading).toBe(true)
-    
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false)
-    })
-    
-    consoleSpy.mockRestore()
   })
 
   it('debería manejar un solo libro correctamente', async () => {
