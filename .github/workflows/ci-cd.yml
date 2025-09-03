@@ -11,6 +11,9 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
 
     steps:
     - name: Checkout code
@@ -25,17 +28,28 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Debug working directory
+      run: |
+        pwd
+        ls -la
+        ls -la vitest.config.js || echo "vitest.config.js not found"
+
     - name: Run linting
       run: npm run lint
 
     - name: Run tests
-      run: npm run test:run
+      run: |
+        chmod +x scripts/ci-test.sh
+        ./scripts/ci-test.sh
 
   # Job para build (depende de que los tests pasen)
   build:
     name: Build Application
     needs: test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./
 
     steps:
     - name: Checkout code
