@@ -1,8 +1,7 @@
-# GitHub Actions - Reviews Libros
+# GitHub Actions - Rate & Mate
+Repositorio: https://github.com/blch05/reviews-libros
 
-Este proyecto incluye tres workflows de GitHub Actions para automatizar el proceso de CI/CD.
-
-## 📁 Workflows Disponibles
+## Workflows Disponibles
 
 ### 1. **Build App** (`.github/workflows/build.yml`)
 - **Trigger:** Push y Pull Requests a `main` y `Christian-Barreto`
@@ -34,7 +33,7 @@ Este proyecto incluye tres workflows de GitHub Actions para automatizar el proce
   4. **Deploy Production** → Producción en push a main
   5. **Notify** → Notificaciones de resultados
 
-## 🚀 Ejecución Manual
+## Ejecución Manual
 
 Todos los workflows incluyen `workflow_dispatch` que permite ejecutarlos manualmente desde la interfaz de GitHub:
 
@@ -44,7 +43,7 @@ Todos los workflows incluyen `workflow_dispatch` que permite ejecutarlos manualm
 4. Click en **Run workflow**
 5. Selecciona la rama y click **Run workflow**
 
-## 📊 Scripts Disponibles
+## Scripts Disponibles
 
 Los workflows utilizan estos scripts del `package.json`:
 
@@ -55,7 +54,7 @@ npm test              # Ejecutar tests
 npm run test:coverage # Tests con cobertura
 ```
 
-## 🔄 Flujo de Trabajo Típico
+## Flujo de Trabajo Típico
 
 ### Para Development:
 1. Crea una rama desde `Christian-Barreto`
@@ -73,7 +72,7 @@ npm run test:coverage # Tests con cobertura
 2. Se ejecuta deployment automático
 3. La app se actualiza en producción
 
-## 📋 Artefactos Generados
+## Artefactos Generados
 
 Los workflows generan y suben estos artefactos:
 
@@ -81,7 +80,7 @@ Los workflows generan y suben estos artefactos:
 - **Test results:** Resultados y cobertura de tests
 - **Production build:** Build listo para producción
 
-## ⚙️ Configuración
+## Configuración
 
 ### Variables de Entorno (si necesarias):
 ```yaml
@@ -96,7 +95,7 @@ VERCEL_PROJECT_ID=your_project_id
 - Cambia las ramas en los triggers según tus necesidades
 - Ajusta las versiones de Node.js en la matrix strategy
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Si los workflows fallan:
 1. Revisa los logs en la pestaña **Actions**
@@ -117,5 +116,3 @@ npm run test:coverage
 npm run build
 npm run lint
 ```
-
-¡Las GitHub Actions están listas para automatizar tu flujo de desarrollo! 🎉
