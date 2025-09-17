@@ -1,49 +1,48 @@
 "use client";
 
-// Funciones para interactuar con localStorage en el cliente
-export function getTopReviewedBooks(limit: number = 10): string[] {
+import { getAuthToken } from './book-review-utils';
+
+// Funciones para interactuar con la API en el cliente
+export async function getTopReviewedBooks(limit: number = 10): Promise<string[]> {
   if (typeof window === 'undefined') return [];
   
   try {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith("reviews-"));
-    const bookReviewCounts: { [id: string]: number } = {};
-    
-    keys.forEach(k => {
-      try {
-        const reviews = JSON.parse(localStorage.getItem(k) || "[]");
-        if (reviews.length > 0) {
-          const bookId = k.replace("reviews-", "");
-          bookReviewCounts[bookId] = reviews.length;
-        }
-      } catch {
-        // Ignorar entradas con JSON inválido
-      }
+    const token = getAuthToken();
+    if (!token) {
+      console.log('❌ No auth token available for stats request');
+      return [];
+    }
+
+    const response = await fetch('/api/reviews/stats', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
     });
+
+    if (!response.ok) {
+      console.error('Error fetching top books:', response.statusText);
+      return [];
+    }
+
+    const data = await response.json();
+    if (data.success && data.data.topBooks) {
+      return data.data.topBooks.slice(0, limit).map((book: any) => book.bookId);
+    }
     
-    return Object.entries(bookReviewCounts)
-      .sort((a, b) => b[1] - a[1])
-      .map(([id]) => id)
-      .slice(0, limit);
-  } catch {
+    return [];
+  } catch (error) {
+    console.error('Error getting top reviewed books:', error);
     return [];
   }
 }
 
+// Cache en memoria para libros (solo durante la sesión)
+const bookCache = new Map<string, any>();
+
 export function getCachedBook(bookId: string) {
-  if (typeof window === 'undefined') return null;
-  
-  try {
-    const bookKey = `bookdesc-${bookId}`;
-    const cached = localStorage.getItem(bookKey);
-    return cached ? JSON.parse(cached) : null;
-  } catch {
-    return null;
-  }
+  return bookCache.get(bookId) || null;
 }
 
 export function setCachedBook(bookId: string, bookData: any) {
-  if (typeof window === 'undefined') return;
-  
-  const bookKey = `bookdesc-${bookId}`;
-  localStorage.setItem(bookKey, JSON.stringify(bookData));
+  bookCache.set(bookId, bookData);
 }

@@ -1,0 +1,509 @@
+import React, { useRef, useEffect, useState, useCallback } from 'react'
+
+// =============== ACCESSIBILITY CONSTANTS ===============
+export const ARIA_LABELS = {
+  navigation: 'Navegación principal',
+  search: 'Buscar libros',
+  profile: 'Perfil de usuario',
+  logout: 'Cerrar sesión',
+  login: 'Iniciar sesión',
+  register: 'Registrarse',
+  close: 'Cerrar',
+  menu: 'Menú',
+  loading: 'Cargando contenido',
+  error: 'Error en la aplicación',
+  success: 'Operación exitosa',
+  warning: 'Advertencia',
+  info: 'Información',
+  
+  // Book-specific
+  bookCover: 'Portada del libro',
+  bookRating: 'Calificación del libro',
+  addToFavorites: 'Agregar a favoritos',
+  removeFromFavorites: 'Quitar de favoritos',
+  writeReview: 'Escribir reseña',
+  editReview: 'Editar reseña',
+  deleteReview: 'Eliminar reseña',
+  voteHelpful: 'Marcar como útil',
+  voteUnhelpful: 'Marcar como no útil',
+  
+  // Form-specific
+  emailField: 'Campo de correo electrónico',
+  passwordField: 'Campo de contraseña',
+  confirmPasswordField: 'Confirmar contraseña',
+  nameField: 'Campo de nombre',
+  reviewField: 'Campo de reseña',
+  ratingField: 'Calificación de 1 a 5 estrellas',
+  submit: 'Enviar formulario',
+  reset: 'Limpiar formulario',
+  
+  // Pagination
+  pagination: 'Navegación de páginas',
+  previousPage: 'Página anterior',
+  nextPage: 'Página siguiente',
+  currentPage: 'Página actual',
+  goToPage: 'Ir a la página',
+  
+  // Sort and filter
+  sortBy: 'Ordenar por',
+  filterBy: 'Filtrar por',
+  clearFilters: 'Limpiar filtros',
+  applyFilters: 'Aplicar filtros'
+} as const
+
+export const KEYBOARD_KEYS = {
+  ENTER: 'Enter',
+  SPACE: ' ',
+  ESCAPE: 'Escape',
+  TAB: 'Tab',
+  ARROW_UP: 'ArrowUp',
+  ARROW_DOWN: 'ArrowDown',
+  ARROW_LEFT: 'ArrowLeft',
+  ARROW_RIGHT: 'ArrowRight',
+  HOME: 'Home',
+  END: 'End',
+  PAGE_UP: 'PageUp',
+  PAGE_DOWN: 'PageDown'
+} as const
+
+// =============== FOCUS MANAGEMENT ===============
+
+/**
+ * Hook for managing focus trap within a container
+ */
+export function useFocusTrap(isActive: boolean) {
+  const containerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!isActive || !containerRef.current) return
+
+    const container = containerRef.current
+    const focusableElements = container.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )
+    
+    const firstElement = focusableElements[0] as HTMLElement
+    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+    const handleTabKey = (e: KeyboardEvent) => {
+      if (e.key !== KEYBOARD_KEYS.TAB) return
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault()
+          lastElement?.focus()
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault()
+          firstElement?.focus()
+        }
+      }
+    }
+
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === KEYBOARD_KEYS.ESCAPE) {
+        // Allow parent components to handle escape
+        const escapeEvent = new CustomEvent('focustrap:escape')
+        container.dispatchEvent(escapeEvent)
+      }
+    }
+
+    container.addEventListener('keydown', handleTabKey)
+    container.addEventListener('keydown', handleEscapeKey)
+    
+    // Focus first element when trap activates
+    firstElement?.focus()
+
+    return () => {
+      container.removeEventListener('keydown', handleTabKey)
+      container.removeEventListener('keydown', handleEscapeKey)
+    }
+  }, [isActive])
+
+  return containerRef
+}
+
+/**
+ * Hook for managing focus restoration
+ */
+export function useFocusRestore() {
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+
+  const saveFocus = useCallback(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement
+  }, [])
+
+  const restoreFocus = useCallback(() => {
+    if (previousFocusRef.current) {
+      previousFocusRef.current.focus()
+      previousFocusRef.current = null
+    }
+  }, [])
+
+  return { saveFocus, restoreFocus }
+}
+
+/**
+ * Hook for managing focus on route changes
+ */
+export function useRouteAnnouncement() {
+  const [announcement, setAnnouncement] = useState('')
+
+  const announceRoute = useCallback((routeName: string, description?: string) => {
+    const message = description 
+      ? `Navegando a ${routeName}. ${description}` 
+      : `Navegando a ${routeName}`
+    
+    setAnnouncement(message)
+    
+    // Clear announcement after screen reader reads it
+    setTimeout(() => setAnnouncement(''), 1000)
+  }, [])
+
+  return { announcement, announceRoute }
+}
+
+// =============== KEYBOARD NAVIGATION ===============
+
+/**
+ * Hook for arrow key navigation in lists
+ */
+export function useArrowNavigation<T extends HTMLElement>(
+  itemsCount: number,
+  orientation: 'horizontal' | 'vertical' = 'vertical'
+) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const itemRefs = useRef<(T | null)[]>([])
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const { key } = e
+    let newIndex = activeIndex
+
+    const isVertical = orientation === 'vertical'
+    const nextKey = isVertical ? KEYBOARD_KEYS.ARROW_DOWN : KEYBOARD_KEYS.ARROW_RIGHT
+    const prevKey = isVertical ? KEYBOARD_KEYS.ARROW_UP : KEYBOARD_KEYS.ARROW_LEFT
+
+    switch (key) {
+      case nextKey:
+        e.preventDefault()
+        newIndex = activeIndex === itemsCount - 1 ? 0 : activeIndex + 1
+        break
+      case prevKey:
+        e.preventDefault()
+        newIndex = activeIndex === 0 ? itemsCount - 1 : activeIndex - 1
+        break
+      case KEYBOARD_KEYS.HOME:
+        e.preventDefault()
+        newIndex = 0
+        break
+      case KEYBOARD_KEYS.END:
+        e.preventDefault()
+        newIndex = itemsCount - 1
+        break
+      default:
+        return
+    }
+
+    setActiveIndex(newIndex)
+    itemRefs.current[newIndex]?.focus()
+  }, [activeIndex, itemsCount, orientation])
+
+  const setItemRef = useCallback((index: number, element: T | null) => {
+    itemRefs.current[index] = element
+  }, [])
+
+  return {
+    activeIndex,
+    setActiveIndex,
+    handleKeyDown,
+    setItemRef
+  }
+}
+
+/**
+ * Hook for implementing roving tabindex
+ */
+export function useRovingTabIndex(itemsCount: number) {
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const getTabIndex = useCallback((index: number) => {
+    return index === activeIndex ? 0 : -1
+  }, [activeIndex])
+
+  const getAriaSelected = useCallback((index: number) => {
+    return index === activeIndex
+  }, [activeIndex])
+
+  return {
+    activeIndex,
+    setActiveIndex,
+    getTabIndex,
+    getAriaSelected
+  }
+}
+
+// =============== SCREEN READER UTILITIES ===============
+
+/**
+ * Hook for live announcements to screen readers
+ */
+export function useLiveAnnouncer() {
+  const [announcement, setAnnouncement] = useState('')
+  const [politeness, setPoliteness] = useState<'polite' | 'assertive'>('polite')
+
+  const announce = useCallback((
+    message: string, 
+    priority: 'polite' | 'assertive' = 'polite'
+  ) => {
+    setPoliteness(priority)
+    setAnnouncement(message)
+    
+    // Clear after announcement
+    setTimeout(() => setAnnouncement(''), 1000)
+  }, [])
+
+  const announceError = useCallback((message: string) => {
+    announce(`Error: ${message}`, 'assertive')
+  }, [announce])
+
+  const announceSuccess = useCallback((message: string) => {
+    announce(`Éxito: ${message}`, 'polite')
+  }, [announce])
+
+  const announceLoading = useCallback((message: string = 'Cargando') => {
+    announce(message, 'polite')
+  }, [announce])
+
+  return {
+    announcement,
+    politeness,
+    announce,
+    announceError,
+    announceSuccess,
+    announceLoading
+  }
+}
+
+/**
+ * Component for screen reader announcements
+ */
+interface LiveRegionProps {
+  message: string
+  politeness?: 'polite' | 'assertive'
+  atomic?: boolean
+}
+
+export function LiveRegion({ 
+  message, 
+  politeness = 'polite',
+  atomic = true 
+}: LiveRegionProps) {
+  return (
+    <div
+      role="status"
+      aria-live={politeness}
+      aria-atomic={atomic}
+      className="sr-only"
+    >
+      {message}
+    </div>
+  )
+}
+
+// =============== ACCESSIBILITY VALIDATION ===============
+
+export class AccessibilityValidator {
+  /**
+   * Validates that interactive elements have accessible names
+   */
+  static validateAccessibleName(element: HTMLElement): boolean {
+    const accessibleName = 
+      element.getAttribute('aria-label') ||
+      element.getAttribute('aria-labelledby') ||
+      element.textContent?.trim()
+
+    return Boolean(accessibleName)
+  }
+
+  /**
+   * Validates color contrast (simplified check)
+   */
+  static validateColorContrast(
+    foreground: string, 
+    background: string,
+    level: 'AA' | 'AAA' = 'AA'
+  ): boolean {
+    // This is a simplified implementation
+    // In production, use a proper color contrast library
+    const minRatio = level === 'AAA' ? 7 : 4.5
+    
+    // Placeholder implementation
+    // Would need actual color contrast calculation
+    return true
+  }
+
+  /**
+   * Validates form accessibility
+   */
+  static validateForm(form: HTMLFormElement): string[] {
+    const errors: string[] = []
+    const inputs = form.querySelectorAll('input, select, textarea')
+
+    inputs.forEach((input, index) => {
+      const element = input as HTMLElement
+      
+      // Check for labels
+      const hasLabel = element.getAttribute('aria-label') ||
+                      element.getAttribute('aria-labelledby') ||
+                      form.querySelector(`label[for="${element.id}"]`)
+
+      if (!hasLabel) {
+        errors.push(`Input at index ${index} missing accessible label`)
+      }
+
+      // Check for error descriptions
+      if (element.getAttribute('aria-invalid') === 'true') {
+        const hasErrorDescription = element.getAttribute('aria-describedby')
+        if (!hasErrorDescription) {
+          errors.push(`Invalid input at index ${index} missing error description`)
+        }
+      }
+    })
+
+    return errors
+  }
+
+  /**
+   * Validates heading hierarchy
+   */
+  static validateHeadingHierarchy(container: HTMLElement): string[] {
+    const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
+    const errors: string[] = []
+    let lastLevel = 0
+
+    headings.forEach((heading, index) => {
+      const level = parseInt(heading.tagName.substring(1))
+      
+      if (index === 0 && level !== 1) {
+        errors.push('First heading should be h1')
+      }
+      
+      if (level > lastLevel + 1) {
+        errors.push(`Heading level skipped at index ${index}: h${lastLevel} to h${level}`)
+      }
+      
+      lastLevel = level
+    })
+
+    return errors
+  }
+}
+
+// =============== ACCESSIBILITY COMPONENTS ===============
+
+/**
+ * Skip link component for keyboard navigation
+ */
+interface SkipLinkProps {
+  href: string
+  children: React.ReactNode
+}
+
+export function SkipLink({ href, children }: SkipLinkProps) {
+  return (
+    <a
+      href={href}
+      className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 
+                 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white
+                 focus:text-sm focus:font-medium focus:rounded-md focus:shadow-lg"
+    >
+      {children}
+    </a>
+  )
+}
+
+/**
+ * Visually hidden component that's still accessible to screen readers
+ */
+interface VisuallyHiddenProps {
+  children: React.ReactNode
+  as?: keyof JSX.IntrinsicElements
+}
+
+export function VisuallyHidden({ children, as: Component = 'span' }: VisuallyHiddenProps) {
+  return (
+    <Component className="sr-only">
+      {children}
+    </Component>
+  )
+}
+
+// =============== ACCESSIBILITY HOOKS ===============
+
+/**
+ * Hook for managing reduced motion preferences
+ */
+export function useReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setPrefersReducedMotion(mediaQuery.matches)
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches)
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  return prefersReducedMotion
+}
+
+/**
+ * Hook for high contrast mode detection
+ */
+export function useHighContrast() {
+  const [isHighContrast, setIsHighContrast] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-contrast: high)')
+    setIsHighContrast(mediaQuery.matches)
+
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsHighContrast(e.matches)
+    }
+
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [])
+
+  return isHighContrast
+}
+
+/**
+ * Hook for managing landmark roles and navigation
+ */
+export function useLandmarkNavigation() {
+  const [landmarks, setLandmarks] = useState<HTMLElement[]>([])
+
+  useEffect(() => {
+    const landmarkElements = document.querySelectorAll<HTMLElement>(
+      '[role="main"], [role="navigation"], [role="banner"], [role="contentinfo"], ' +
+      '[role="complementary"], [role="search"], main, nav, header, footer, aside'
+    )
+    
+    setLandmarks(Array.from(landmarkElements))
+  }, [])
+
+  const navigateToLandmark = useCallback((index: number) => {
+    if (landmarks[index]) {
+      landmarks[index].focus()
+      landmarks[index].scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [landmarks])
+
+  return { landmarks, navigateToLandmark }
+}

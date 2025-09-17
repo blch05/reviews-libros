@@ -3,56 +3,260 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { StarDisplay, StarSelector } from "../../../components/StarComponents";
+import { Review } from "../../../types";
+import { BookReviewUtils } from "../../lib/book-review-utils";
+import { useAuthStatus } from "../../hooks/useAuthStatus";
+import EditReviewModal from "../../components/EditReviewModal";
+import ProxyAwareBookImage from "../../components/ProxyAwareBookImage";
 
 export default function BookDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [book, setBook] = useState<any>(null);
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewText, setReviewText] = useState("");
   const [stars, setStars] = useState(5);
   const [hoverStars, setHoverStars] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userHasReviewed, setUserHasReviewed] = useState(false);
+  const [userReview, setUserReview] = useState<Review | null>(null);
   const router = useRouter();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuthStatus();
 
   useEffect(() => {
     async function fetchBook() {
       const res = await fetch(`https://www.googleapis.com/books/v1/volumes/${id}`);
       const data = await res.json();
       setBook(data);
-      setLoading(false);
     }
-    // Cargar reseñas de localStorage
-    function fetchReviewsLocal() {
-      const key = `reviews-${id}`;
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        setReviews(JSON.parse(stored));
+    
+    async function fetchReviews() {
+      const reviewsData = await BookReviewUtils.getBookReviews(id);
+      setReviews(reviewsData);
+      
+      // Solo verificar reseñas del usuario si la autenticación ya está completamente cargada
+      if (!authLoading) {
+        if (isAuthenticated && user?.id) {
+          console.log('🔍 Checking for user review:', { userId: user.id, reviewCount: reviewsData.length, authLoading });
+          
+          // Buscar reseña del usuario actual usando comparación de string para mayor robustez
+          const userReview = reviewsData.find((review: Review) => 
+            review.userId.toString() === user.id.toString()
+          ) || null;
+          
+          console.log('🔍 User review found:', userReview ? `Review ID: ${userReview._id}` : 'No review found');
+          console.log('🔍 All review user IDs:', reviewsData.map(r => ({ id: r.userId, name: r.userName })));
+          
+          setUserHasReviewed(!!userReview);
+          setUserReview(userReview);
+        } else {
+          console.log('🔍 User not authenticated, clearing review state');
+          setUserHasReviewed(false);
+          setUserReview(null);
+        }
       } else {
-        setReviews([]);
+        console.log('🔍 Auth still loading, skipping user review check');
       }
     }
-    fetchBook();
-    fetchReviewsLocal();
-  }, [id]);
+    
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([fetchBook(), fetchReviews()]);
+      setLoading(false);
+    };
+    
+    loadData();
+  }, [id, isAuthenticated, user?.id, authLoading]); // Incluir authLoading para re-verificar cuando termine la carga
 
-  function handleAddReview(e: React.FormEvent) {
+  // useEffect adicional para re-verificar reseñas cuando termine la carga de auth
+  useEffect(() => {
+    if (!authLoading && reviews.length > 0) {
+      console.log('🔄 Auth loading finished, re-checking user reviews');
+      console.log('🔄 Current state:', { 
+        isAuthenticated, 
+        userId: user?.id, 
+        reviewCount: reviews.length,
+        authLoading 
+      });
+      
+      if (isAuthenticated && user?.id) {
+        const userReview = reviews.find((review: Review) => 
+          review.userId.toString() === user.id.toString()
+        ) || null;
+        
+        console.log('🔍 Re-check result:', userReview ? `Found review ${userReview._id}` : 'No review found');
+        console.log('🔍 Review details:', userReview ? { 
+          id: userReview._id, 
+          userId: userReview.userId, 
+          content: userReview.content.substring(0, 50) 
+        } : null);
+        
+        setUserHasReviewed(!!userReview);
+        setUserReview(userReview);
+        
+        // Persistir estado en localStorage para próximas cargas
+        if (userReview) {
+          localStorage.setItem(`userReview_${id}`, JSON.stringify({
+            hasReviewed: true,
+            reviewId: userReview._id,
+            userId: user.id
+          }));
+        } else {
+          localStorage.removeItem(`userReview_${id}`);
+        }
+      } else {
+        console.log('🔍 User not authenticated in re-check');
+        setUserHasReviewed(false);
+        setUserReview(null);
+        localStorage.removeItem(`userReview_${id}`);
+      }
+    }
+  }, [authLoading, isAuthenticated, user?.id, reviews, id]);
+
+  // useEffect para cargar estado persistido al inicio
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const persistedState = localStorage.getItem(`userReview_${id}`);
+      if (persistedState && persistedState.trim() !== '') {
+        try {
+          const { hasReviewed, reviewId, userId } = JSON.parse(persistedState);
+          console.log('📦 Loading persisted review state:', { hasReviewed, reviewId, userId });
+          
+          // Solo aplicar estado persistido si coincide con el usuario actual
+          if (isAuthenticated && user?.id === userId) {
+            setUserHasReviewed(hasReviewed);
+            console.log('📦 Applied persisted state - user has reviewed:', hasReviewed);
+          }
+        } catch (error) {
+          console.error('Error parsing persisted review state:', error);
+          console.log('Corrupted localStorage data:', persistedState);
+          localStorage.removeItem(`userReview_${id}`);
+        }
+      }
+    }
+  }, [id, isAuthenticated, user?.id]);
+
+  async function handleAddReview(e: React.FormEvent) {
     e.preventDefault();
-    const key = `reviews-${id}`;
-    const newReview = { text: reviewText, stars, votes: 0 };
-    const updatedReviews = [...reviews, newReview];
-    setReviews(updatedReviews);
-    localStorage.setItem(key, JSON.stringify(updatedReviews));
-    setReviewText("");
-    setStars(5);
+    
+    console.log('📝 Attempting to add review:', { 
+      isAuthenticated, 
+      userHasReviewed, 
+      userReviewId: userReview?._id,
+      userId: user?.id 
+    });
+    
+    if (!isAuthenticated) {
+      alert('Debes estar autenticado para agregar una reseña');
+      return;
+    }
+    
+    if (userHasReviewed) {
+      alert('Ya has reseñado este libro. Solo puedes hacer una reseña por libro.');
+      return;
+    }
+    
+    if (reviewText.trim().length < 20) {
+      alert('La reseña debe tener al menos 20 caracteres');
+      return;
+    }
+    
+    try {
+      const newReview = await BookReviewUtils.createReview(
+        id,
+        reviewText.trim(),
+        stars,
+        book.volumeInfo.title,
+        book.volumeInfo.authors || ['Autor desconocido'],
+        BookReviewUtils.getBookCoverUrl(book)
+      );
+      
+      if (newReview) {
+        console.log('✅ Review created successfully:', newReview._id);
+        setReviews(prev => [newReview, ...prev]);
+        setReviewText("");
+        setStars(5);
+        setUserHasReviewed(true); // Actualizar estado
+        setUserReview(newReview); // Guardar la reseña del usuario
+        
+        // Persistir nuevo estado
+        localStorage.setItem(`userReview_${id}`, JSON.stringify({
+          hasReviewed: true,
+          reviewId: newReview._id,
+          userId: user?.id
+        }));
+        
+        alert('Reseña agregada exitosamente');
+      }
+    } catch (error) {
+      console.error('Error creating review:', error);
+      alert(error instanceof Error ? error.message : 'Error creando la reseña');
+    }
   }
 
-  function handleVote(index: number, vote: number) {
-    const key = `reviews-${id}`;
-    const updatedReviews = reviews.map((r, i) =>
-      i === index ? { ...r, votes: (r.votes || 0) + vote } : r
-    );
-    setReviews(updatedReviews);
-    localStorage.setItem(key, JSON.stringify(updatedReviews));
+  async function handleEditReview(review: Review) {
+    setEditingReview(review);
+    setIsModalOpen(true);
+  }
+
+  async function handleSaveEdit(reviewId: string, content: string, rating: number) {
+    console.log('✏️ Updating review:', reviewId);
+    const updatedReview = await BookReviewUtils.updateReview(reviewId, content, rating);
+    if (updatedReview) {
+      console.log('✅ Review updated successfully');
+      setReviews(prev => prev.map(r => r._id === reviewId ? updatedReview : r));
+      setUserReview(updatedReview); // Actualizar la reseña del usuario
+      
+      // Actualizar estado persistido
+      if (user?.id) {
+        localStorage.setItem(`userReview_${id}`, JSON.stringify({
+          hasReviewed: true,
+          reviewId: updatedReview._id,
+          userId: user.id
+        }));
+      }
+      
+      setIsModalOpen(false);
+      setEditingReview(null);
+      alert('Reseña actualizada exitosamente');
+    } else {
+      alert('Error al actualizar la reseña');
+    }
+  }
+
+  async function handleDeleteReview(reviewId: string) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta reseña?')) {
+      console.log('🗑️ Deleting review:', reviewId);
+      const success = await BookReviewUtils.deleteReview(reviewId);
+      if (success) {
+        console.log('✅ Review deleted successfully');
+        setReviews(prev => prev.filter(r => r._id !== reviewId));
+        setUserHasReviewed(false); // Permitir agregar nueva reseña después de eliminar
+        setUserReview(null);
+        
+        // Limpiar estado persistido
+        localStorage.removeItem(`userReview_${id}`);
+        
+        alert('Reseña eliminada exitosamente');
+      } else {
+        alert('Error al eliminar la reseña');
+      }
+    }
+  }
+
+  async function handleVote(reviewId: string, reviewAuthorId: string) {
+    if (!isAuthenticated) {
+      alert('Debes estar autenticado para votar');
+      return;
+    }
+    
+    const success = await BookReviewUtils.voteReview(reviewId, reviewAuthorId, id);
+    if (success) {
+      // Recargar las reviews para mostrar el nuevo conteo de votos
+      const updatedReviews = await BookReviewUtils.getBookReviews(id);
+      setReviews(updatedReviews);
+    }
   }
 
   if (loading) return (
@@ -79,7 +283,7 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
   );
 
   const info = book.volumeInfo;
-  const portada = info.imageLinks?.extraLarge || info.imageLinks?.large || info.imageLinks?.medium || info.imageLinks?.thumbnail || "";
+  const coverUrl = BookReviewUtils.getBookCoverUrl(book);
 
   // Procesar categorías para eliminar duplicados
   const uniqueCategories = info.categories ? 
@@ -90,9 +294,9 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
     )] : [];
 
   // Calculos para el promedio y reviews destacadas
-  const avgStars = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.stars, 0) / reviews.length) : null;
-  const maxReview = reviews.length > 0 ? reviews.reduce((max, r) => r.stars > max.stars ? r : max, reviews[0]) : null;
-  const minReview = reviews.length > 0 ? reviews.reduce((min, r) => r.stars < min.stars ? r : min, reviews[0]) : null;
+  const avgStars = reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) : null;
+  const maxReview = reviews.length > 0 ? reviews.reduce((max, r) => r.rating > max.rating ? r : max, reviews[0]) : null;
+  const minReview = reviews.length > 0 ? reviews.reduce((min, r) => r.rating < min.rating ? r : min, reviews[0]) : null;
 
   return (
     <div className="min-h-screen">
@@ -123,7 +327,16 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
               <div className="flex flex-col md:flex-row gap-6">
                 {/* Portada */}
                 <div className="flex-shrink-0">
-                  {portada && <img src={portada} alt={info.title} className="w-48 h-auto rounded-md object-cover shadow-lg mx-auto md:mx-0" />}
+                  <ProxyAwareBookImage 
+                    src={coverUrl} 
+                    alt={info.title} 
+                    size="xl" 
+                    className="mx-auto md:mx-0"
+                    showRetry={true}
+                    showAttempts={true}
+                    onLoad={() => console.log(`✅ Book cover loaded: ${info.title}`)}
+                    onError={(error) => console.warn(`❌ Book cover failed: ${info.title} - ${error}`)}
+                  />
                 </div>
                 
                 {/* Datos del libro */}
@@ -206,24 +419,24 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
                       <div className="bg-white border border-green-100 rounded-lg p-4 shadow-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-[#616f55] font-bold">Mejor Reseña</span>
-                          <StarDisplay stars={maxReview.stars} />
+                          <StarDisplay stars={maxReview.rating} />
                         </div>
-                        <p className="text-gray-700 italic text-sm leading-relaxed">&ldquo;{maxReview.text}&rdquo;</p>
-                        {maxReview.votes !== 0 && (
-                          <p className="text-xs text-gray-500 mt-2">{maxReview.votes} votos</p>
+                        <p className="text-gray-700 italic text-sm leading-relaxed">&ldquo;{maxReview.content}&rdquo;</p>
+                        {maxReview.helpfulVotes !== 0 && (
+                          <p className="text-xs text-gray-500 mt-2">{maxReview.helpfulVotes} votos</p>
                         )}
                       </div>
                     )}
                     
-                    {minReview && maxReview?.stars !== minReview?.stars && (
+                    {minReview && maxReview?.rating !== minReview?.rating && (
                       <div className="bg-red-50/90 backdrop-blur-sm border border-red-200 rounded-lg p-4 shadow-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <span className="text-[#251711] font-bold">Reseña Más Crítica</span>
-                          <StarDisplay stars={minReview.stars} />
+                          <StarDisplay stars={minReview.rating} />
                         </div>
-                        <p className="text-gray-700 italic text-sm leading-relaxed">&ldquo;{minReview.text}&rdquo;</p>
-                        {minReview.votes !== 0 && (
-                          <p className="text-xs text-gray-500 mt-2">{minReview.votes} votos</p>
+                        <p className="text-gray-700 italic text-sm leading-relaxed">&ldquo;{minReview.content}&rdquo;</p>
+                        {minReview.helpfulVotes !== 0 && (
+                          <p className="text-xs text-gray-500 mt-2">{minReview.helpfulVotes} votos</p>
                         )}
                       </div>
                     )}
@@ -235,56 +448,113 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
             {/* Columna derecha: Reseñas y formulario */}
             <div className="lg:w-1/2 space-y-6">
               {/* Formulario de nueva reseña */}
-              <section className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-6 border border-gray-200">
-                <div className="flex justify-center items-center items-baseline gap-1 mb-4">
-                  <p className="text-2xl underline font-serif text-black font-bold">¿Y qué opinás</p>
-                  <p className="text-2xl underline font-serif text-black italic font-bold">vos?</p>
-                </div>
-                <form onSubmit={handleAddReview} className="flex flex-col gap-4">
-                  <textarea
-                    value={reviewText}
-                    onChange={e => setReviewText(e.target.value)}
-                    placeholder="Escribe tu reseña..."
-                    className="p-3 border text-gray-400 font-serif border-gray-300 rounded-md w-full min-h-[120px] focus:outline-none focus:ring-2 focus:ring-white-500 text-sm bg-white/95"
-                    required
-                  />
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold font-serif text-black text-sm">Calificá este libro:</span>
-                    <StarSelector stars={stars} setStars={setStars} hoverStars={hoverStars} setHoverStars={setHoverStars} />
-                  </div>
-                  <button type="submit" className="p-3 bg-black text-white font-serif rounded-md font-semibold hover:bg-white hover:text-black transition text-sm">
-                    Agregar reseña
+              {isAuthenticated ? (
+                userHasReviewed ? (
+                  <section className="bg-gray-100/90 backdrop-blur-sm rounded-lg shadow-lg p-6 border border-gray-300">
+                    <div className="text-center">
+                      <p className="text-lg font-serif text-gray-600 mb-2">✓ Ya has reseñado este libro</p>
+                      <p className="text-sm text-gray-500">Solo puedes hacer una reseña por libro. Puedes editarla o eliminarla desde la lista de reseñas.</p>
+                    </div>
+                  </section>
+                ) : (
+                  <section className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-6 border border-gray-200">
+                    <div className="flex justify-center items-center items-baseline gap-1 mb-4">
+                      <p className="text-2xl underline font-serif text-black font-bold">¿Y qué opinás</p>
+                      <p className="text-2xl underline font-serif text-black italic font-bold">vos?</p>
+                    </div>
+                    <form onSubmit={handleAddReview} className="flex flex-col gap-4">
+                      <textarea
+                        value={reviewText}
+                        onChange={e => setReviewText(e.target.value)}
+                        placeholder="Escribe tu reseña... (mínimo 20 caracteres)"
+                        className="p-3 border text-gray-400 font-serif border-gray-300 rounded-md w-full min-h-[120px] focus:outline-none focus:ring-2 focus:ring-[#616f55] text-sm bg-white/95"
+                        required
+                        minLength={20}
+                      />
+                      <div className="flex justify-between">
+                        <span className={`text-xs font-medium ${
+                          reviewText.trim().length === 0 
+                            ? 'text-gray-400' 
+                            : reviewText.trim().length < 20 
+                            ? 'text-red-500' 
+                            : 'text-green-600'
+                        }`}>
+                          {reviewText.trim().length === 0 
+                            ? 'Mínimo 20 caracteres requeridos'
+                            : reviewText.trim().length < 20 
+                            ? `⚠️ Faltan ${20 - reviewText.trim().length} caracteres` 
+                            : '✓ Suficiente contenido'
+                          }
+                        </span>
+                        <span className="text-xs text-gray-400">{reviewText.length} caracteres</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold font-serif text-black text-sm">Calificá este libro:</span>
+                        <StarSelector stars={stars} setStars={setStars} hoverStars={hoverStars} setHoverStars={setHoverStars} />
+                      </div>
+                      <button 
+                        type="submit" 
+                        className="p-3 bg-[#616f55] text-white font-serif rounded-md font-semibold hover:bg-white hover:text-[#616f55] border border-[#616f55] transition text-sm"
+                        disabled={reviewText.trim().length < 20}
+                      >
+                        Agregar reseña
+                      </button>
+                    </form>
+                  </section>
+                )
+              ) : (
+                <section className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-6 border border-gray-200 text-center">
+                  <h3 className="text-lg font-bold text-gray-800 font-serif mb-2">¿Querés dejar tu reseña?</h3>
+                  <p className="text-gray-600 text-sm mb-4">Iniciá sesión para compartir tu opinión sobre este libro</p>
+                  <button 
+                    onClick={() => router.push('/')}
+                    className="px-6 py-2 bg-[#616f55] text-white font-serif rounded-md font-semibold hover:bg-white hover:text-[#616f55] border border-[#616f55] transition text-sm"
+                  >
+                    Iniciar Sesión
                   </button>
-                </form>
-              </section>
+                </section>
+              )}
 
               {/* Lista de todas las reseñas */}
               <section>
                 <h2 className="text-xl font-bold mb-4 font-serif underline text-white drop-shadow-lg">Todas las Reseñas ({reviews.length})</h2>
                 <div className="space-y-4">
-                  {reviews.length > 0 ? reviews.map((r, i) => (
-                    <div key={i} className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 border border-gray-200">
+                  {reviews.length > 0 ? reviews.map((r) => (
+                    <div key={r._id} className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 border border-gray-200">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <StarDisplay stars={r.stars} />
-                          <span className="text-gray-500 text-xs">({r.votes} votos)</span>
+                          <StarDisplay stars={r.rating} />
+                          <span className="text-gray-500 text-xs">({r.helpfulVotes} votos)</span>
+                          <span className="text-gray-400 text-xs">por {r.userName}</span>
                         </div>
                         <div className="flex gap-2">
-                          <button 
-                            className="px-2 py-1 bg-white text-green-700 border border-black rounded text-xs font-medium hover:bg-gray-100 transition" 
-                            onClick={() => handleVote(i, 1)}
-                          >
-                            👍 Útil
-                          </button>
-                          <button 
-                            className="px-2 py-1 bg-black text-white border border-white rounded text-xs font-medium hover:bg-gray-800 transition" 
-                            onClick={() => handleVote(i, -1)}
-                          >
-                            👎
-                          </button>
+                          {isAuthenticated && userReview && userReview._id === r._id && (
+                            <>
+                              <button 
+                                className="px-3 py-1 bg-[#616f55] text-white font-serif rounded-md text-xs font-semibold hover:bg-white hover:text-[#616f55] border border-[#616f55] transition"
+                                onClick={() => handleEditReview(r)}
+                              >
+                                ✏️ Editar
+                              </button>
+                              <button 
+                                className="px-3 py-1 bg-[#251711] text-white font-serif rounded-md text-xs font-semibold hover:bg-white hover:text-[#251711] border border-[#251711] transition"
+                                onClick={() => handleDeleteReview(r._id)}
+                              >
+                                �️ Eliminar
+                              </button>
+                            </>
+                          )}
+                          {isAuthenticated && (!userReview || userReview._id !== r._id) && (
+                            <button 
+                              className="px-3 py-1 bg-white text-[#616f55] border border-[#616f55] rounded-md text-xs font-serif font-semibold hover:bg-[#616f55] hover:text-white transition"
+                              onClick={() => handleVote(r._id, r.userId)}
+                            >
+                              � Útil
+                            </button>
+                          )}
                         </div>
                       </div>
-                      <p className="text-gray-700 leading-relaxed text-sm">{r.text}</p>
+                      <p className="text-gray-700 leading-relaxed text-sm">{r.content}</p>
                     </div>
                   )) : (
                     <div className="bg-gray-50/90 backdrop-blur-sm rounded-lg p-6 text-center border border-gray-200 shadow-lg">
@@ -298,6 +568,19 @@ export default function BookDetail({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
       </main>
+      
+      {/* Modal de edición */}
+      {editingReview && (
+        <EditReviewModal
+          review={editingReview}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingReview(null);
+          }}
+          onSave={handleSaveEdit}
+        />
+      )}
     </div>
   );
 }
