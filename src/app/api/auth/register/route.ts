@@ -6,12 +6,35 @@ export async function POST(request: NextRequest) {
   console.log('🔥 Register endpoint called');
   
   try {
+    // Verificar variables de entorno
+    console.log('📊 Environment check:', {
+      hasMongoUri: !!process.env.MONGODB_URI,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      mongoUriLength: process.env.MONGODB_URI?.length || 0,
+      nodeEnv: process.env.NODE_ENV
+    });
+    
     const body = await request.json();
     console.log('📝 Registration data received:', { 
       email: body.email, 
-      name: body.name, 
-      hasPassword: !!body.password 
+      name: body.name,
+      username: body.username,
+      hasPassword: !!body.password,
+      passwordLength: body.password?.length || 0,
+      bodyKeys: Object.keys(body)
     });
+    
+    // Validación básica adicional
+    if (!body.email || !body.password) {
+      console.log('❌ Missing basic required fields');
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Email y contraseña son requeridos'
+        },
+        { status: 400 }
+      );
+    }
     
     // Validate input
     console.log('🔍 Starting validation...');
@@ -36,7 +59,9 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ User registered successfully:', { 
       id: user._id, 
-      email: user.email 
+      email: user.email,
+      hasToken: !!token,
+      tokenLength: token?.length || 0
     });
 
     // Create response with cookie
@@ -65,8 +90,22 @@ export async function POST(request: NextRequest) {
     console.error('💥 Registration error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      error
+      name: error instanceof Error ? error.name : 'Unknown',
+      code: (error as any)?.code,
+      error: error
     });
+    
+    // Handle duplicate user error
+    if ((error as any)?.code === 11000 || (error as Error)?.message?.includes('duplicate')) {
+      console.log('❌ Duplicate user detected');
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'El email ya está registrado'
+        },
+        { status: 400 }
+      );
+    }
     
     return NextResponse.json(
       {

@@ -6,10 +6,20 @@ export async function POST(request: NextRequest) {
   console.log('🔥 Login endpoint called');
   
   try {
+    // Verificar variables de entorno
+    console.log('📊 Environment check:', {
+      hasMongoUri: !!process.env.MONGODB_URI,
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      mongoUriLength: process.env.MONGODB_URI?.length || 0,
+      nodeEnv: process.env.NODE_ENV
+    });
+    
     const body = await request.json();
     console.log('📝 Login data received:', { 
       email: body.email, 
-      hasPassword: !!body.password 
+      hasPassword: !!body.password,
+      passwordLength: body.password?.length || 0,
+      bodyKeys: Object.keys(body)
     });
     
     // Validate input
@@ -35,7 +45,9 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ Login successful:', { 
       id: user._id, 
-      email: user.email 
+      email: user.email,
+      hasToken: !!token,
+      tokenLength: token?.length || 0
     });
 
     // Create response with cookie
@@ -64,7 +76,8 @@ export async function POST(request: NextRequest) {
     console.error('💥 Login error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
-      error
+      name: error instanceof Error ? error.name : 'Unknown',
+      error: error
     });
     
     return NextResponse.json(
