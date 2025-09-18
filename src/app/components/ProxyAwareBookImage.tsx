@@ -35,10 +35,8 @@ const ProxyAwareBookImage: React.FC<ProxyAwareBookImageProps> = ({
     // Convertir HTTP a HTTPS para mejor compatibilidad
     let url = originalUrl.replace('http://', 'https://');
     
-    // Para URLs de Google Books en localhost, usar proxy automáticamente
-    if (url.includes('books.google.com') && 
-        typeof window !== 'undefined' && 
-        window.location.hostname === 'localhost') {
+    // Para URLs de Google Books, usar proxy automáticamente para evitar CORS
+    if (url.includes('books.google.com')) {
       console.log('📚 Creating proxy URL for Google Books:', url);
       return `/api/proxy-image?url=${encodeURIComponent(url)}`;
     }

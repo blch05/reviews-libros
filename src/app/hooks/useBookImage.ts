@@ -48,37 +48,36 @@ export function useBookImage(
       if (url.includes('books.google.com')) {
         console.log('📚 Processing Google Books URL for fallbacks:', url);
         
-        // Estrategia 1: Intentar con proxy primero para CORS
-        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-          urls.unshift(`/api/proxy-image?url=${encodeURIComponent(url)}`);
-        }
+        // Estrategia 1: Siempre intentar con proxy primero para CORS (en cualquier entorno)
+        urls.unshift(`/api/proxy-image?url=${encodeURIComponent(url)}`);
         
         // Estrategia 2: Quitar parámetros de optimización
         const cleanUrl = url.split('&fife=')[0];
         if (cleanUrl !== url) {
-          urls.push(cleanUrl);
-          if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-            urls.push(`/api/proxy-image?url=${encodeURIComponent(cleanUrl)}`);
-          }
+          urls.push(`/api/proxy-image?url=${encodeURIComponent(cleanUrl)}`);
+          urls.push(cleanUrl); // También intentar directamente por si funciona
         }
         
         // Estrategia 3: URL base sin parámetros
         const baseUrl = cleanUrl.split('&')[0];
         if (baseUrl !== cleanUrl) {
-          urls.push(baseUrl);
-          if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-            urls.push(`/api/proxy-image?url=${encodeURIComponent(baseUrl)}`);
-          }
+          urls.push(`/api/proxy-image?url=${encodeURIComponent(baseUrl)}`);
+          urls.push(baseUrl); // También intentar directamente por si funciona
         }
         
-        // Estrategia 4: Diferentes zooms
-        const zoomUrls = [`${baseUrl}&zoom=1`, `${baseUrl}&zoom=0`];
-        urls.push(...zoomUrls);
+        // Estrategia 4: Diferentes zooms via proxy
+        urls.push(`/api/proxy-image?url=${encodeURIComponent(`${baseUrl}&zoom=1`)}`);
+        urls.push(`/api/proxy-image?url=${encodeURIComponent(`${baseUrl}&zoom=0`)}`);
         
-        if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-          zoomUrls.forEach(zoomUrl => {
-            urls.push(`/api/proxy-image?url=${encodeURIComponent(zoomUrl)}`);
-          });
+        // Estrategia 5: Como último recurso, intentar URLs directas
+        urls.push(`${baseUrl}&zoom=1`);
+        urls.push(`${baseUrl}&zoom=0`);
+        
+        // Estrategia 6: Convertir HTTP a HTTPS si es necesario
+        const httpsUrl = url.replace('http://', 'https://');
+        if (httpsUrl !== url) {
+          urls.push(`/api/proxy-image?url=${encodeURIComponent(httpsUrl)}`);
+          urls.push(httpsUrl);
         }
       }
     }

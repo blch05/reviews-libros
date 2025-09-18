@@ -66,7 +66,7 @@ export default function Login({ onSwitchToRegister }: LoginProps) {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#616f55] focus:border-transparent transition-all duration-200 font-sans"
+                className="w-full px-4 py-3 border text-gray-500 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#616f55] focus:border-transparent transition-all duration-200 font-sans"
                 placeholder="tu@ejemplo.com"
                 required
               />

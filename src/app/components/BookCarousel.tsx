@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import TruncatedText from "./TruncatedText";
 import StarRating from "./StarRating";
-import BookImage from "./BookImage";
+import ProxyAwareBookImage from "./ProxyAwareBookImage";
 import ReviewCard from "./ReviewCard";
 import CarouselButton from "./CarouselButton";
 import { useRouter } from "next/navigation";
@@ -96,7 +96,7 @@ export function BookCarousel({ topBooks }: CarouselProps) {
             
             return (
               <>
-                <BookImage src={coverUrl} alt={info.title} size="lg" />
+                <ProxyAwareBookImage src={coverUrl} alt={info.title} size="lg" />
                 <div className="flex flex-col justify-center ml-8">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="text-white text-2xl font-bold" style={{ maxWidth: 250 }}>{info.title}</h3>

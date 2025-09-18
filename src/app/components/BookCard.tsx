@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import TruncatedText from "./TruncatedText";
 import StarRating from "./StarRating";
-import BookImage from "./BookImage";
+import ProxyAwareBookImage from "./ProxyAwareBookImage";
 import { BookReviewUtils } from "../lib/book-review-utils";
 
 export function BookCard({ book, onSelect }: { book: any, onSelect: (id: string) => void }) {
@@ -33,7 +33,7 @@ export function BookCard({ book, onSelect }: { book: any, onSelect: (id: string)
 
   return (
     <div className="flex flex-col md:flex-row gap-4 border-b border-gray-400 p-4 bg-white shadow-md cursor-pointer" onClick={() => onSelect(book.id)}>
-      <BookImage src={coverUrl} alt={info.title} size="md" className="rounded-md" />
+      <ProxyAwareBookImage src={coverUrl} alt={info.title} size="md" className="rounded-md" />
       <div className="flex-1 font-sans text-sm text-gray-500">
         <div className="flex items-center gap-2 mb-2">
           <h3 className="text-md text-black font-bold">{info.title}</h3>
