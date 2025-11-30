@@ -1,0 +1,59 @@
+name: Build App
+
+on:
+  push:
+    branches: [ main, Christian-Barreto ]
+  pull_request:
+    branches: [ main, Christian-Barreto ]
+  workflow_dispatch: # Permite ejecutar manualmente
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run lint check
+      run: npm run lint
+
+    - name: Build application
+      run: npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-files-node-${{ matrix.node-version }}
+        path: |
+          .next/
+          out/
+        retention-days: 5
+
+    - name: Check build size
+      run: |
+        echo "Build completed successfully!"
+        echo "Build directory size:"
+        du -sh .next/ || echo "No .next directory found"
+        
+    - name: Build status notification
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Build completed successfully for Node.js ${{ matrix.node-version }}"
+        else
+          echo "❌ Build failed for Node.js ${{ matrix.node-version }}"
+        fi

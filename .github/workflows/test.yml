@@ -1,0 +1,69 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, Christian-Barreto ]
+  pull_request:
+    branches: [ main, Christian-Barreto ]
+  workflow_dispatch: # Permite ejecutar manualmente
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run tests
+      run: npm test
+
+    - name: Run tests with coverage
+      run: npm run test:coverage
+      continue-on-error: true
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-node-${{ matrix.node-version }}
+        path: |
+          coverage/
+          test-results.xml
+        retention-days: 30
+
+    - name: Comment test coverage on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          try {
+            const coverage = fs.readFileSync('coverage/lcov-report/index.html', 'utf8');
+            // Extract coverage percentage (this is a simplified example)
+            console.log('Coverage report generated');
+          } catch (error) {
+            console.log('No coverage report found');
+          }
+
+    - name: Test status notification
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ All tests passed for Node.js ${{ matrix.node-version }}"
+        else
+          echo "❌ Tests failed for Node.js ${{ matrix.node-version }}"
+        fi

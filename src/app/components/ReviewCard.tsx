@@ -1,6 +1,6 @@
 import React from "react";
 import StarRating from "./StarRating";
-import { Review } from "../lib/book-review-utils";
+import { Review } from "../../types";
 
 interface ReviewCardProps {
   review: Review;
@@ -33,13 +33,13 @@ const ReviewCard: React.FC<ReviewCardProps> = ({ review, type = "default", class
           {style.label}
         </span>
         <StarRating 
-          rating={review.stars} 
+          rating={review.rating} 
           size="sm" 
           showValue={false}
           color="text-black"
         />
       </div>
-      <p className="text-gray-700 text-sm italic">"{review.text}"</p>
+      <p className="text-gray-700 text-sm italic">&ldquo;{review.content}&rdquo;</p>
     </div>
   );
 };

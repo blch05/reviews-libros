@@ -25,7 +25,10 @@ const StarRating: React.FC<StarRatingProps> = ({
 
   const starSize = sizeClasses[size];
 
-  if (rating <= 0) return null;
+  // Asegurar que rating sea un número válido
+  const numericRating = typeof rating === 'number' && !isNaN(rating) ? rating : 0;
+
+  if (numericRating <= 0) return null;
 
   return (
     <div className={`flex items-center gap-1 ${className}`}>
@@ -33,7 +36,7 @@ const StarRating: React.FC<StarRatingProps> = ({
         {[...Array(maxStars)].map((_, i) => (
           <span 
             key={i} 
-            className={`${starSize} ${i < rating ? color : "text-gray-300"}`}
+            className={`${starSize} ${i < numericRating ? color : "text-gray-300"}`}
           >
             ★
           </span>
@@ -41,7 +44,7 @@ const StarRating: React.FC<StarRatingProps> = ({
       </div>
       {showValue && (
         <span className={`${starSize} font-semibold font-serif text-white`}>
-          {rating.toFixed(1)}/{maxStars}.0
+          {numericRating.toFixed(1)}/{maxStars}.0
         </span>
       )}
     </div>

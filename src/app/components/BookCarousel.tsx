@@ -3,20 +3,69 @@
 import { useState, useEffect } from "react";
 import TruncatedText from "./TruncatedText";
 import StarRating from "./StarRating";
-import BookImage from "./BookImage";
+import ProxyAwareBookImage from "./ProxyAwareBookImage";
 import ReviewCard from "./ReviewCard";
 import CarouselButton from "./CarouselButton";
 import { useRouter } from "next/navigation";
 import { BookReviewUtils } from "../lib/book-review-utils";
+import { Review } from "../../types";
 
 interface CarouselProps {
   topBooks: any[];
 }
 
+interface BookData {
+  averageStars: number;
+  reviews: Review[];
+  best?: Review;
+  worst?: Review;
+}
+
 export function BookCarousel({ topBooks }: CarouselProps) {
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [bookData, setBookData] = useState<{ [bookId: string]: BookData }>({});
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // Cargar datos del libro actual
+  useEffect(() => {
+    const loadBookData = async () => {
+      if (topBooks.length === 0) return;
+      
+      const currentBook = topBooks[carouselIndex];
+      if (!currentBook || bookData[currentBook.id]) return;
+      
+      setLoading(true);
+      try {
+        const reviews = await BookReviewUtils.getBookReviews(currentBook.id);
+        const averageStars = reviews.length > 0 
+          ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+          : 0;
+        
+        let best: Review | undefined, worst: Review | undefined;
+        if (reviews.length > 0) {
+          best = reviews.reduce((a, b) => a.rating > b.rating ? a : b);
+          worst = reviews.reduce((a, b) => a.rating < b.rating ? a : b);
+        }
+        
+        setBookData(prev => ({
+          ...prev,
+          [currentBook.id]: {
+            averageStars,
+            reviews,
+            best,
+            worst
+          }
+        }));
+      } catch (error) {
+        console.error('Error loading book data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBookData();
+  }, [carouselIndex, topBooks, bookData]);
 
   // Seleccionar libro
   function handleSelectBook(id: string) {
@@ -25,10 +74,13 @@ export function BookCarousel({ topBooks }: CarouselProps) {
 
   if (topBooks.length === 0) return null;
 
+  const currentBook = topBooks[carouselIndex];
+  const currentBookData = currentBook ? bookData[currentBook.id] : null;
+
   return (
     <>
       {/* Carrusel de libros -> aparecen solo los que tienen reviews*/}
-      <div className="fixed left-0 bg-[#251711] py-8 mt-16 flex items-center justify-center relative" style={{ marginLeft: 0 }}>
+      <div className="fixed left-0 bg-[#251711] py-8 flex items-center justify-center relative" style={{ marginLeft: 0 }}>
         <CarouselButton 
           direction="prev"
           onClick={() => setCarouselIndex(i => (i === 0 ? topBooks.length - 1 : i - 1))}
@@ -40,22 +92,29 @@ export function BookCarousel({ topBooks }: CarouselProps) {
             if (!book) return null;
             const info = book.volumeInfo;
             const coverUrl = BookReviewUtils.getBookCoverUrl(book);
-            const averageStars = BookReviewUtils.getAverageStars(book.id);
+            const averageStars = currentBookData?.averageStars || 0;
             
             return (
               <>
-                <BookImage src={coverUrl} alt={info.title} size="lg" />
+                <ProxyAwareBookImage src={coverUrl} alt={info.title} size="lg" />
                 <div className="flex flex-col justify-center ml-8">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className="text-white text-2xl font-bold" style={{ maxWidth: 250 }}>{info.title}</h3>
-                    <StarRating 
-                      rating={averageStars} 
-                      size="lg" 
-                      color="text-white"
-                      className="text-white"
-                    />
+                    {averageStars > 0 && (
+                      <StarRating 
+                        rating={averageStars} 
+                        size="lg" 
+                        color="text-white"
+                        className="text-white"
+                      />
+                    )}
                   </div>
                   {info.authors && <p className="text-gray-300 font-serif text-xs mb-2">de {info.authors.join(", ")}</p>}
+                  {currentBookData?.reviews && currentBookData.reviews.length > 0 && (
+                    <p className="text-gray-300 font-serif text-xs mb-2">
+                      {currentBookData.reviews.length} reseña{currentBookData.reviews.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
                   {info.description && (
                     <div className="text-gray-200 font-sans text-sm" style={{ maxWidth: 320 }}>
                       <TruncatedText 
@@ -82,10 +141,9 @@ export function BookCarousel({ topBooks }: CarouselProps) {
       {/* Sección de mejores y peores reseñas */}
       {(() => {
         const currentBook = topBooks[carouselIndex];
-        if (!currentBook) return null;
+        if (!currentBook || !currentBookData) return null;
         
-        const { best, worst } = BookReviewUtils.getBestAndWorstReviews(currentBook.id);
-        const reviews = BookReviewUtils.getBookReviews(currentBook.id);
+        const { best, worst, reviews } = currentBookData;
         
         if (reviews.length === 0) return null;
         
@@ -99,7 +157,7 @@ export function BookCarousel({ topBooks }: CarouselProps) {
                 {best && (
                   <ReviewCard review={best} type="best" />
                 )}
-                {worst && best?.stars !== worst?.stars && (
+                {worst && best?.rating !== worst?.rating && (
                   <ReviewCard review={worst} type="worst" />
                 )}
               </div>

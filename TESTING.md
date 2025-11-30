@@ -16,7 +16,7 @@ Este proyecto implementa pruebas unitarias completas usando **Vitest** y **Testi
 ## Estructura de Testing
 
 ### 1. Configuración Base
-- `vitest.config.ts`: Configuración principal de Vitest
+- `vitest.config.js`: Configuración principal de Vitest (JavaScript para máxima compatibilidad CI/CD)
 - `src/test/setup.ts`: Setup global para mocks y configuración
 
 ### 2. Lógica de Negocios (Testeo Directo)

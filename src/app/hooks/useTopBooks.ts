@@ -11,14 +11,14 @@ export function useTopBooks() {
   useEffect(() => {
     async function loadTopBooks() {
       try {
-        const topBookIds = getTopReviewedBooks(10);
+        const topBookIds = await getTopReviewedBooks(10);
         
         if (topBookIds.length === 0) {
           setTopBooks([]);
           return;
         }
 
-        // Buscar datos de los libros -> Usa localstorage
+        // Buscar datos de los libros -> Usa cache en memoria
         const booksData = await Promise.all(
           topBookIds.map(async (id) => {
             const cached = getCachedBook(id);

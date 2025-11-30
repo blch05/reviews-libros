@@ -4,13 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { buscarLibros } from "../lib/server-actions";
 import { BookCard } from "./BookCard";
+import { useAuthStore } from '../store/useAuthStore';
+
 
 export function SearchSection() {
   const [query, setQuery] = useState("");
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const { user, logoutUser } = useAuthStore();
+  
+    const handleLogout = async () => {
+      await logoutUser();
+    };
   const router = useRouter();
+  
 
   async function handleBuscar(e: React.FormEvent) {
     e.preventDefault();
@@ -43,7 +51,7 @@ export function SearchSection() {
           🧉
         </button>
         <div className="flex flex-col flex-1">
-          <h1 className="text-2xl font-bold text-[#616f55] tracking-wide">Rate & Mate</h1>
+          <h1 className="text-2xl font-bold text-[#616f55] tracking-wide">Rate asd& Mate</h1>
         </div>
         <form onSubmit={handleBuscar} className="flex items-center gap-0 bg-white border border-gray-300 rounded-md mt-2 w-full max-w-lg overflow-hidden justify-center h-8">
           <input
@@ -60,6 +68,12 @@ export function SearchSection() {
             </svg>
           </button>
         </form>
+        {user && (<button
+          onClick={handleLogout}
+          className="ml-4 bg-black text-white px-4 py-2 rounded-lg hover:bg-[#251711] transition-colors text-sm font-medium"
+        >
+          Logout
+        </button>)}
       </header>
       <div className="flex justify-center">
         <p className="mb-2 text-gray-700 text-center max-w-xl">Buscar por nombre, por ISBN, o por autor.</p>
